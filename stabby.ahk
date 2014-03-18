@@ -15,7 +15,8 @@ Initialization_section
 
 Credits:
 --------
-David M. Bradford, tinypig.com
+Copyright 2014 David M. Bradford
+tinypig.com
 
 TODO
 ----
