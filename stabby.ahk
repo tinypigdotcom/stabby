@@ -60,7 +60,14 @@ SplitPath, A_ScriptName,,, TheScriptExtension, TheScriptName
 IniFile = %A_ScriptDir%\%TheScriptName%.ini
 IconFile = %A_ScriptDir%\%TheScriptName%.ico
 
-menu, tray, icon,%IconFile%
+if TheScriptExtension = Exe
+{
+}
+else
+{
+    menu, tray, icon,%IconFile%
+}
+
 menu, tray, NoStandard
 menu, tray, add, Options, GetOptions
 menu, tray, add, Reload, GoReload
@@ -69,7 +76,7 @@ menu, tray, add, Exit, GoAway
 IfNotExist, %IniFile%
     Gosub, BuildIni
 
-IniRead, TriggerKey, %IniFile%, settings, TriggerKey, Insert
+IniRead, TriggerKey, %IniFile%, settings, TriggerKey, CapsLock
 
 Hotkey, %TriggerKey%, DisplayWindow
 Hotkey, %TriggerKey%, On
@@ -188,7 +195,7 @@ return
 ;------------------------------------------------------------------------------
 BuildIni:
 ;------------------------------------------------------------------------------
-    IniWrite, Insert, %IniFile%, settings, TriggerKey
+    IniWrite, CapsLock, %IniFile%, settings, TriggerKey
 return
 
 TestToggleEnable:
