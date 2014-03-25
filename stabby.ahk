@@ -71,6 +71,8 @@ DONE
 #SingleInstance ignore
 #WinActivateForce
 
+VERSION=0.2
+
 SplitPath, A_ScriptName,,, TheScriptExtension, TheScriptName
 IniFile = %A_ScriptDir%\%TheScriptName%.ini
 IconFile = %A_ScriptDir%\%TheScriptName%.ico
@@ -100,6 +102,7 @@ LetterKeys=a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z
 
 ;===[  Build_GUI  ]===========================================================
 
+Gui, font, s10, Courier New
 Gui +AlwaysOnTop
 Gui, Add, Text,  vMessage, Pick a key (a-z) or Escape to exit
 Gui, Add, Text, W390 H380 vTextVar
@@ -121,8 +124,9 @@ DisplayWindow:
         {
             IfWinExist, ahk_id %WinID%
             {
+                StringUpper, myletter, A_LoopField
                 WinGetTitle, Title, ahk_id %WinID%
-                Texty=%Texty%%A_LoopField% - %Title%`n
+                Texty=%Texty%[%myletter%] - %Title%`n
             }
             else
             {
