@@ -104,7 +104,8 @@ LetterKeys=a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z
 
 Gui, font, s10, Courier New
 Gui +AlwaysOnTop
-Gui, Add, Text,  vMessage, Pick a key (A-Z), Space to reassign, or Esc
+MessageText = Pick a key (A-Z), Space to reassign, or Esc
+Gui, Add, Text,  vMessage, %MessageText%
 Gui, Add, Text, W390 H380 vTextVar
 
 Gui, 2:Add, Text, x6 y7 w50 h20 , &Hotkey
@@ -114,6 +115,7 @@ Gui, 2:Add, Button, x116 y37 w100 h30 , Cancel
 return
 
 DisplayWindow:
+    ShowMessage(MessageText)
     Texty=
 
     Loop, parse, LetterKeys, `,
