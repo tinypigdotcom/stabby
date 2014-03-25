@@ -104,9 +104,8 @@ LetterKeys=a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z
 
 Gui, font, s10, Courier New
 Gui +AlwaysOnTop
-Gui, Add, Text,  vMessage, Pick a key (a-z) or Escape to exit
+Gui, Add, Text,  vMessage, Pick a key (A-Z), Space to reassign, or Esc
 Gui, Add, Text, W390 H380 vTextVar
-Gui, Add, Text,  vMssage, Pick a key (a-z) or Escape to exit
 
 Gui, 2:Add, Text, x6 y7 w50 h20 , &Hotkey
 Gui, 2:Add, Hotkey, x66 y7 w90 h20 vChosenHotkey, %TriggerKey%
