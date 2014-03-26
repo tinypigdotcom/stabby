@@ -1,45 +1,33 @@
-;    "sTabby" - a replacement for Windows' alt-tab navigation
-;    Copyright (C) 2014  David M. Bradford
-;
-;    This program is free software: you can redistribute it and/or modify
-;    it under the terms of the GNU General Public License as published by
-;    the Free Software Foundation, either version 3 of the License, or
-;    (at your option) any later version.
-;
-;    This program is distributed in the hope that it will be useful,
-;    but WITHOUT ANY WARRANTY; without even the implied warranty of
-;    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-;    GNU General Public License for more details.
-;
-;    You should have received a copy of the GNU General Public License
-;    along with this program.  If not, see https://www.gnu.org/licenses/gpl.txt
-;
-;    The author, David M. Bradford, can be contacted at:
-;    davembradford@gmail.com
-;
-;Scaffolding_section <-- A quick shortcut to whatever part I'm currently working on
-;____Approximate_middle_of_table_of_contents
-; MsgBox, 0, , %KeyList%, 1 ;DEBUG
 /*
+    "sTabby" - a replacement for Windows' alt-tab navigation
+    Copyright (C) 2014  David M. Bradford
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see https://www.gnu.org/licenses/gpl.txt
+
+    The author, David M. Bradford, can be contacted at:
+    davembradford@gmail.com
 
 ===================================
   stabby: stop the alt-tab madness!
 ===================================
 
-Table_of_Contents
------------------
-Build_GUI
-____Approximate_middle_of_table_of_contents
-Initialization_section
-
 TODO
 ----
+ * Maybe don't overdo it/overthink it
  * documentation
  * credits
- * license
  * window title
- * Maybe don't overdo it/overthink it
- * Should at least have option for main hotkey though
  * Ability to delete key from list
  * Avoid assumptions such as
      * screen size
@@ -61,6 +49,7 @@ DONE
  * Display what is currently set
  * Possibilities
      * window is closed
+ * Should at least have option for main hotkey though
 
 */
 
@@ -71,16 +60,13 @@ DONE
 #SingleInstance ignore
 #WinActivateForce
 
-VERSION=0.2
+VERSION=0.3
 
 SplitPath, A_ScriptName,,, TheScriptExtension, TheScriptName
 IniFile = %A_ScriptDir%\%TheScriptName%.ini
 IconFile = %A_ScriptDir%\%TheScriptName%.ico
 
-if TheScriptExtension = Exe
-{
-}
-else
+if TheScriptExtension <> Exe
 {
     menu, tray, icon,%IconFile%
 }
@@ -127,7 +113,8 @@ DisplayWindow:
             {
                 StringUpper, myletter, A_LoopField
                 WinGetTitle, Title, ahk_id %WinID%
-                Texty=%Texty%[%myletter%] - %Title%`n
+                WinGet, myprocess, ProcessName
+                Texty=%Texty%[%myletter%] - %myprocess%: %Title%`n
             }
             else
             {
@@ -149,8 +136,6 @@ DisplayWindow:
         else
         {
             KeyMap%buffer_key% := WinExist("A")
-;            MsgBox, 0, , %KeyList%, 1
-;Scaffolding_section
         }
     }
     else
@@ -176,8 +161,6 @@ GetKey:
 return
 
 
-;EndKey:Delete
-
 ;------------------------------------------------------------------------------
 ShowGUI()
 ;------------------------------------------------------------------------------
@@ -191,7 +174,6 @@ ShowGUI()
 ShowMessage(mtext)
 ;------------------------------------------------------------------------------
 {
-;    global Message
     GuiControl, , Message, %mtext%
     return
 }
@@ -227,11 +209,11 @@ GoAway:
 return
 
 GetOptions:
-    Gui, 2:Show, x131 y91 h82 w227, New GUI Window
+    Gui, 2:Show, x131 y91 h82 w227, sTabby - Options
 return
 
 GoReload:
-    MsgBox, 4, Reload, Reloading will wipe out your keys.  Continue?
+    MsgBox, 4, Reload, Reloading will wipe out your "sTabby" key settings.  Continue?
     IfMsgBox Yes
         Reload
 return
