@@ -60,7 +60,7 @@ DONE
 #SingleInstance ignore
 #WinActivateForce
 
-VERSION=0.7
+VERSION=0.8
 
 SplitPath, A_ScriptName,,, TheScriptExtension, TheScriptName
 IniFile = %A_ScriptDir%\%TheScriptName%.ini
@@ -129,7 +129,6 @@ DisplayWindow:
                 WinGet, myprocess, ProcessName
                 myprocess := RegExReplace(myprocess, "\..*", "")
                 Texty=%Texty%[%myletter%]     %myprocess%: %mytitle%`n
-                IniWrite, %WinID%, %IniFile%, Settings, %A_LoopField%
             }
             else
             {
@@ -156,7 +155,9 @@ DisplayWindow:
         }
         else
         {
-            KeyMap%buffer_key% := WinExist("A")
+            WinID := WinExist("A")
+            KeyMap%buffer_key% := WinID
+            IniWrite, %WinID%, %IniFile%, Settings, %buffer_key%
         }
     }
     else
@@ -169,7 +170,9 @@ DisplayWindow:
             Gui, Hide
             if buffer_key in %LetterKeys%
             {
-                KeyMap%buffer_key% := WinExist("A")
+                WinID := WinExist("A")
+                KeyMap%buffer_key% := WinID
+                IniWrite, %WinID%, %IniFile%, Settings, %buffer_key%
             }
         }
         else if myerrorlevel=EndKey:Delete
@@ -181,6 +184,7 @@ DisplayWindow:
             if buffer_key in %LetterKeys%
             {
                 KeyMap%buffer_key% :=
+                IniWrite, %A_Space%, %IniFile%, Settings, %buffer_key%
             }
         }
         else if myerrorlevel=EndKey:Home
