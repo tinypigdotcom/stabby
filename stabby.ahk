@@ -60,7 +60,7 @@ DONE
 #SingleInstance ignore
 #WinActivateForce
 
-VERSION=0.4
+VERSION=0.5
 
 SplitPath, A_ScriptName,,, TheScriptExtension, TheScriptName
 IniFile = %A_ScriptDir%\%TheScriptName%.ini
@@ -94,6 +94,8 @@ MessageText = Pick a key (A-Z), Space to reassign, or Esc
 Gui, Add, Text,  vMessage, %MessageText%
 Gui, Add, Text, W390 H380 vTextVar
 
+Gui +Disabled
+Gui -SysMenu
 Gui, 2:Add, Text, x6 y7 w50 h20 , &Hotkey
 Gui, 2:Add, Hotkey, x66 y7 w90 h20 vChosenHotkey, %TriggerKey%
 Gui, 2:Add, Button, Default x6 y37 w100 h30 , OK
