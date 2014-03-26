@@ -65,6 +65,7 @@ VERSION=0.5
 SplitPath, A_ScriptName,,, TheScriptExtension, TheScriptName
 IniFile = %A_ScriptDir%\%TheScriptName%.ini
 IconFile = %A_ScriptDir%\%TheScriptName%.ico
+myerrorlevel=
 
 if TheScriptExtension <> Exe
 {
@@ -90,11 +91,11 @@ LetterKeys=a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z
 
 Gui, font, s10, Courier New
 Gui +AlwaysOnTop
-MessageText = Pick a key (A-Z), Space to reassign, or Esc
+MessageText = Pick a key:
 Gui, Add, Text,  vMessage, %MessageText%
 Gui, Add, Text, W390 H380 vTextVar
 
-Gui +Disabled
+;Gui +Disabled
 Gui -SysMenu
 Gui, 2:Add, Text, x6 y7 w50 h20 , &Hotkey
 Gui, 2:Add, Hotkey, x66 y7 w90 h20 vChosenHotkey, %TriggerKey%
@@ -115,9 +116,10 @@ DisplayWindow:
             {
                 StringUpper, myletter, A_LoopField
                 WinGetTitle, Title, ahk_id %WinID%
+                StringLeft, mytitle, Title, 25
                 WinGet, myprocess, ProcessName
                 myprocess := RegExReplace(myprocess, "\..*", "")
-                Texty=%Texty%[%myletter%] - %myprocess%: %Title%`n
+                Texty=%Texty%[%myletter%]     %myprocess%: %mytitle%`n
             }
             else
             {
@@ -125,6 +127,11 @@ DisplayWindow:
             }
         }
     }
+    Texty=%Texty%`n
+    Texty=%Texty%[space] reassign letter`n
+    Texty=%Texty%[del]   delete letter`n
+    Texty=%Texty%[esc]   dismiss this window`n
+    Texty=%Texty%[home]  restart sTabby`n
     GuiControl, , TextVar, %Texty%
     ShowGUI()
     Gosub, GetKey
@@ -154,6 +161,21 @@ DisplayWindow:
                 KeyMap%buffer_key% := WinExist("A")
             }
         }
+        else if myerrorlevel=EndKey:Delete
+        {
+            ShowMessage("Enter letter to delete:")
+            ShowGUI()
+            Gosub, GetKey
+            Gui, Hide
+            if buffer_key in %LetterKeys%
+            {
+                KeyMap%buffer_key% :=
+            }
+        }
+        else if myerrorlevel=EndKey:Home
+        {
+            Reload
+        }
     }
 return
 
@@ -161,6 +183,7 @@ return
 GetKey:
 ;------------------------------------------------------------------------------
     Input, buffer_key, L1, {LControl}{RControl}{LAlt}{RAlt}{LShift}{RShift}{LWin}{RWin}{AppsKey}{F1}{F2}{F3}{F4}{F5}{F6}{F7}{F8}{F9}{F10}{F11}{F12}{Left}{Right}{Up}{Down}{Home}{End}{PgUp}{PgDn}{Del}{Ins}{BS}{Capslock}{Numlock}{PrintScreen}{Pause}
+    myerrorlevel=%ErrorLevel%
 return
 
 
