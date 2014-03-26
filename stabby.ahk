@@ -60,7 +60,7 @@ DONE
 #SingleInstance ignore
 #WinActivateForce
 
-VERSION=0.3
+VERSION=0.4
 
 SplitPath, A_ScriptName,,, TheScriptExtension, TheScriptName
 IniFile = %A_ScriptDir%\%TheScriptName%.ini
@@ -114,6 +114,7 @@ DisplayWindow:
                 StringUpper, myletter, A_LoopField
                 WinGetTitle, Title, ahk_id %WinID%
                 WinGet, myprocess, ProcessName
+                myprocess := RegExReplace(myprocess, "\..*", "")
                 Texty=%Texty%[%myletter%] - %myprocess%: %Title%`n
             }
             else
