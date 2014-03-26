@@ -60,7 +60,7 @@ DONE
 #SingleInstance ignore
 #WinActivateForce
 
-VERSION=0.5
+VERSION=0.6
 
 SplitPath, A_ScriptName,,, TheScriptExtension, TheScriptName
 IniFile = %A_ScriptDir%\%TheScriptName%.ini
@@ -191,7 +191,8 @@ return
 ShowGUI()
 ;------------------------------------------------------------------------------
 {
-    Gui, Show, NoActivate Center W400 H420, sTabby!
+    global
+    Gui, Show, NoActivate Center W400 H420, sTabby! v%VERSION%
     return
 }
 
