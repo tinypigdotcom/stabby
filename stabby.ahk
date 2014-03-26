@@ -60,7 +60,7 @@ DONE
 #SingleInstance ignore
 #WinActivateForce
 
-VERSION=0.6
+VERSION=0.7
 
 SplitPath, A_ScriptName,,, TheScriptExtension, TheScriptName
 IniFile = %A_ScriptDir%\%TheScriptName%.ini
@@ -87,12 +87,21 @@ Hotkey, %TriggerKey%, On
 
 LetterKeys=a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z
 
+Loop, parse, LetterKeys, `,
+{
+    IniRead, WinID, %IniFile%, settings, %A_LoopField%
+    IfWinExist, ahk_id %WinID%
+    {
+        KeyMap%A_LoopField% := WinID
+    }
+}
+
 ;===[  Build_GUI  ]===========================================================
 
 Gui, font, s10, Courier New
 Gui +AlwaysOnTop
 MessageText = Pick a key:
-Gui, Add, Text,  vMessage, %MessageText%
+Gui, Add, Text, W390 vMessage, %MessageText%
 Gui, Add, Text, W390 H380 vTextVar
 
 ;Gui +Disabled
@@ -120,10 +129,12 @@ DisplayWindow:
                 WinGet, myprocess, ProcessName
                 myprocess := RegExReplace(myprocess, "\..*", "")
                 Texty=%Texty%[%myletter%]     %myprocess%: %mytitle%`n
+                IniWrite, %WinID%, %IniFile%, Settings, %A_LoopField%
             }
             else
             {
                 KeyMap%A_LoopField%=
+                IniWrite, %A_Space%, %IniFile%, Settings, %A_LoopField%
             }
         }
     }
@@ -240,9 +251,8 @@ GetOptions:
 return
 
 GoReload:
-    MsgBox, 4, Reload, Reloading will wipe out your "sTabby" key settings.  Continue?
-    IfMsgBox Yes
+;    MsgBox, 4, Reload, Reloading will wipe out your "sTabby" key settings.  Continue?
+;    IfMsgBox Yes
         Reload
 return
-
 
