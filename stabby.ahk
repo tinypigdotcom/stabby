@@ -26,21 +26,17 @@ TODO
 ----
  * Maybe don't overdo it/overthink it
  * documentation
- * credits
- * window title
- * Ability to delete key from list
  * Avoid assumptions such as
      * screen size
      * default font?
  * Possibilities
      * window is not visible?
  * Allow naming of key - override of window title
- * refactor
+ * refactor (ongoing)
  * error checking
 
 Maybe
 -----
- * Ability to reassign key to different window
  * On startup, tries to hook you up with your last set of keys/windows
      * Including launching the apps themselves
 
@@ -50,17 +46,19 @@ DONE
  * Possibilities
      * window is closed
  * Should at least have option for main hotkey though
+ * credits
+ * window title
+ * Ability to delete key from list
+ * Ability to reassign key to different window
 
 */
 
-
-;===[  Initialization_section  ]==============================================
 
 #Warn All, OutputDebug
 #SingleInstance ignore
 #WinActivateForce
 
-VERSION=0.8
+VERSION=0.9
 
 SplitPath, A_ScriptName,,, TheScriptExtension, TheScriptName
 IniFile = %A_ScriptDir%\%TheScriptName%.ini
@@ -68,9 +66,7 @@ IconFile = %A_ScriptDir%\%TheScriptName%.ico
 myerrorlevel=
 
 if TheScriptExtension <> Exe
-{
     menu, tray, icon,%IconFile%
-}
 
 menu, tray, NoStandard
 menu, tray, add, Options, GetOptions
@@ -91,20 +87,16 @@ Loop, parse, LetterKeys, `,
 {
     IniRead, WinID, %IniFile%, settings, %A_LoopField%
     IfWinExist, ahk_id %WinID%
-    {
         KeyMap%A_LoopField% := WinID
-    }
 }
-
-;===[  Build_GUI  ]===========================================================
 
 Gui, font, s10, Courier New
 Gui +AlwaysOnTop
-MessageText = Pick a key:
+MessageText := "Pick a key:"
 Gui, Add, Text, W390 vMessage, %MessageText%
 Gui, Add, Text, W390 H380 vTextVar
 
-;Gui +Disabled
+Gui +Disabled
 Gui -SysMenu
 Gui, 2:Add, Text, x6 y7 w50 h20 , &Hotkey
 Gui, 2:Add, Hotkey, x66 y7 w90 h20 vChosenHotkey, %TriggerKey%
@@ -131,90 +123,79 @@ DisplayWindow:
                 Texty=%Texty%[%myletter%]     %myprocess%: %mytitle%`n
             }
             else
-            {
-                KeyMap%A_LoopField%=
-                IniWrite, %A_Space%, %IniFile%, Settings, %A_LoopField%
-            }
+                clear_key(A_LoopField)
         }
     }
-    Texty=%Texty%`n
-    Texty=%Texty%[space] reassign letter`n
-    Texty=%Texty%[del]   delete letter`n
-    Texty=%Texty%[esc]   dismiss this window`n
-    Texty=%Texty%[home]  restart sTabby`n
+
+    Texty=
+(
+%Texty%
+
+[space] reassign letter
+[del]   delete letter
+[esc]   dismiss this window
+[home]  restart sTabby
+)
+
     GuiControl, , TextVar, %Texty%
-    ShowGUI()
     Gosub, GetKey
-    Gui, Hide
     if buffer_key in %LetterKeys%
     {
         WinID := KeyMap%buffer_key%
         if( WinID )
-        {
             WinActivate ahk_id %WinID%
-        }
         else
-        {
-            WinID := WinExist("A")
-            KeyMap%buffer_key% := WinID
-            IniWrite, %WinID%, %IniFile%, Settings, %buffer_key%
-        }
+            set_key(buffer_key,WinExist("A"))
     }
     else
     {
         if buffer_key=%A_Space%
         {
             ShowMessage("Enter letter to re-use:")
-            ShowGUI()
             Gosub, GetKey
-            Gui, Hide
             if buffer_key in %LetterKeys%
-            {
-                WinID := WinExist("A")
-                KeyMap%buffer_key% := WinID
-                IniWrite, %WinID%, %IniFile%, Settings, %buffer_key%
-            }
+                set_key(buffer_key,WinExist("A"))
         }
         else if myerrorlevel=EndKey:Delete
         {
             ShowMessage("Enter letter to delete:")
-            ShowGUI()
             Gosub, GetKey
-            Gui, Hide
             if buffer_key in %LetterKeys%
-            {
-                KeyMap%buffer_key% :=
-                IniWrite, %A_Space%, %IniFile%, Settings, %buffer_key%
-            }
+                clear_key(buffer_key)
         }
         else if myerrorlevel=EndKey:Home
-        {
             Reload
-        }
     }
 return
 
-;------------------------------------------------------------------------------
+
 GetKey:
-;------------------------------------------------------------------------------
+    Gui, Show, NoActivate Center W400 H420, sTabby! v%VERSION%
     Input, buffer_key, L1, {LControl}{RControl}{LAlt}{RAlt}{LShift}{RShift}{LWin}{RWin}{AppsKey}{F1}{F2}{F3}{F4}{F5}{F6}{F7}{F8}{F9}{F10}{F11}{F12}{Left}{Right}{Up}{Down}{Home}{End}{PgUp}{PgDn}{Del}{Ins}{BS}{Capslock}{Numlock}{PrintScreen}{Pause}
     myerrorlevel=%ErrorLevel%
+    Gui, Hide
 return
 
 
-;------------------------------------------------------------------------------
-ShowGUI()
-;------------------------------------------------------------------------------
+set_key(in_key,in_winid)
 {
     global
-    Gui, Show, NoActivate Center W400 H420, sTabby! v%VERSION%
+    KeyMap%in_key% := in_winid
+    IniWrite, %in_winid%, %IniFile%, Settings, %in_key%
     return
 }
 
 
-;------------------------------------------------------------------------------
+clear_key(in_key)
+{
+    global
+    KeyMap%in_key%=
+    IniWrite, %A_Space%, %IniFile%, Settings, %in_key%
+    return
+}
+
+
 ShowMessage(mtext)
-;------------------------------------------------------------------------------
 {
     GuiControl, , Message, %mtext%
     return
@@ -230,19 +211,16 @@ ShowMessage(mtext)
     Hotkey, %TriggerKey%, On
 return
 
+
 2ButtonCancel:
 2GuiClose:
 2GuiEscape:
     Gui, 2:Hide
 return
 
-;------------------------------------------------------------------------------
-BuildIni:
-;------------------------------------------------------------------------------
-    IniWrite, CapsLock, %IniFile%, settings, TriggerKey
-return
 
-TestToggleEnable:
+BuildIni:
+    IniWrite, CapsLock, %IniFile%, settings, TriggerKey
 return
 
 
@@ -250,13 +228,14 @@ GoAway:
     ExitApp
 return
 
+
 GetOptions:
     Gui, 2:Show, x131 y91 h82 w227, sTabby - Options
 return
 
+
 GoReload:
-;    MsgBox, 4, Reload, Reloading will wipe out your "sTabby" key settings.  Continue?
-;    IfMsgBox Yes
-        Reload
+    Reload
 return
+
 
