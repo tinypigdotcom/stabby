@@ -59,6 +59,9 @@ DONE
 #WinActivateForce
 
 VERSION=0.9
+DEMO=0
+
+CoordMode, ToolTip, Screen
 
 SplitPath, A_ScriptName,,, TheScriptExtension, TheScriptName
 IniFile = %A_ScriptDir%\%TheScriptName%.ini
@@ -105,6 +108,7 @@ Gui, 2:Add, Button, x116 y37 w100 h30 , Cancel
 return
 
 DisplayWindow:
+    ShowTip("CapsLock")
     ShowMessage(MessageText)
     Texty=
 
@@ -172,6 +176,7 @@ return
 GetKey:
     Gui, Show, NoActivate Center W400 H420, sTabby! v%VERSION%
     Input, buffer_key, L1, {LControl}{RControl}{LAlt}{RAlt}{LShift}{RShift}{LWin}{RWin}{AppsKey}{F1}{F2}{F3}{F4}{F5}{F6}{F7}{F8}{F9}{F10}{F11}{F12}{Left}{Right}{Up}{Down}{Home}{End}{PgUp}{PgDn}{Del}{Ins}{BS}{Capslock}{Numlock}{PrintScreen}{Pause}
+    ShowTip(buffer_key)
     myerrorlevel=%ErrorLevel%
     Gui, Hide
 return
@@ -238,4 +243,19 @@ GoReload:
     Reload
 return
 
+
+ShowTip(text="no_message")
+{
+    global
+    if(DEMO)
+    {
+        Progress, x0 y0 h50 cwFFFF00 m2 b fs28 zh0, %text%, , , Courier New
+        SetTimer, DisablePoker, 750
+    }
+    return
+}
+
+DisablePoker:
+    Progress, Off
+return
 
