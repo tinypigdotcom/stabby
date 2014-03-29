@@ -58,8 +58,25 @@ DONE
 #SingleInstance ignore
 #WinActivateForce
 
-VERSION=0.9
+VERSION=0.9.1
 DEMO=0
+SHOWTIP_DEBUG=3
+
+; How Debug works:
+; ================
+; Default level for debug statements is 2.  Debug statements will only print if
+; Master Debug Level >= statement level.  So, if you create a level 1 debug
+; statement and set Master Debug Level to 1, only that one will print.  Setting
+; Master Debug Level to 2 will trigger a lot of debug output.
+;
+; tscdebug.txt is created in script directory with all debug output
+;
+; Template debug statement:
+;
+; Debug("myvar: " . myvar,1) ;xd
+;
+debug_level=1
+debug_text=
 
 CoordMode, ToolTip, Screen
 
@@ -108,7 +125,7 @@ Gui, 2:Add, Button, x116 y37 w100 h30 , Cancel
 return
 
 DisplayWindow:
-    ShowTip("CapsLock")
+    ShowKey("CapsLock")
     ShowMessage(MessageText)
     Texty=
 
@@ -117,17 +134,27 @@ DisplayWindow:
         WinID := KeyMap%A_LoopField%
         if( WinID )
         {
+            IfWinNotExist, ahk_id %WinID%
+            {
+                IniRead, myprocess, %IniFile%, Executables, %A_LoopField%
+                WinID := FindWindow(A_LoopField,myprocess)
+            }
+            StringUpper, myletter, A_LoopField
             IfWinExist, ahk_id %WinID%
             {
-                StringUpper, myletter, A_LoopField
                 WinGetTitle, Title, ahk_id %WinID%
                 StringLeft, mytitle, Title, 25
                 WinGet, myprocess, ProcessName
+                IniWrite, %myprocess%, %IniFile%, Executables, %A_LoopField%
                 myprocess := RegExReplace(myprocess, "\..*", "")
                 Texty=%Texty%[%myletter%]     %myprocess%: %mytitle%`n
             }
             else
-                clear_key(A_LoopField)
+            {
+                IniRead, myprocess, %IniFile%, Executables, %A_LoopField%
+                myprocess := RegExReplace(myprocess, "\..*", "")
+                Texty=%Texty%[%myletter%]     (%myprocess%)`n
+            }
         }
     }
 
@@ -165,7 +192,7 @@ DisplayWindow:
             ShowMessage("Enter letter to delete:")
             Gosub, GetKey
             if buffer_key in %LetterKeys%
-                clear_key(buffer_key)
+                kill_key(buffer_key)
         }
         else if myerrorlevel=EndKey:Home
             Reload
@@ -176,7 +203,7 @@ return
 GetKey:
     Gui, Show, NoActivate Center W400 H420, sTabby! v%VERSION%
     Input, buffer_key, L1, {LControl}{RControl}{LAlt}{RAlt}{LShift}{RShift}{LWin}{RWin}{AppsKey}{F1}{F2}{F3}{F4}{F5}{F6}{F7}{F8}{F9}{F10}{F11}{F12}{Left}{Right}{Up}{Down}{Home}{End}{PgUp}{PgDn}{Del}{Ins}{BS}{Capslock}{Numlock}{PrintScreen}{Pause}
-    ShowTip(buffer_key)
+    ShowKey(buffer_key)
     myerrorlevel=%ErrorLevel%
     Gui, Hide
 return
@@ -195,7 +222,16 @@ clear_key(in_key)
 {
     global
     KeyMap%in_key%=
-    IniWrite, %A_Space%, %IniFile%, Settings, %in_key%
+    IniDelete, %IniFile%, Settings, %in_key%
+    return
+}
+
+
+kill_key(in_key)
+{
+    global
+    clear_key(in_key)
+    IniDelete, %IniFile%, Executables, %in_key%
     return
 }
 
@@ -204,6 +240,31 @@ ShowMessage(mtext)
 {
     GuiControl, , Message, %mtext%
     return
+}
+
+
+FindWindow(in_key,executable)
+{
+    global
+    DetectHiddenWindows, Off
+
+;    WinGet, id, list,,, Program Manager
+    WinGet, id, list, ahk_exe %executable%
+    outer:
+    Loop, %id%
+    {
+        this_id := id%A_Index%
+        Loop, parse, LetterKeys, `,
+        {
+            WinID := KeyMap%A_LoopField%
+            if( WinID = this_id )
+            {
+                continue outer
+            }
+        }
+        set_key(in_key,this_id)
+        return this_id
+    }
 }
 
 
@@ -244,7 +305,7 @@ GoReload:
 return
 
 
-ShowTip(text="no_message")
+ShowKey(text="no_message")
 {
     global
     if(DEMO)
@@ -258,4 +319,69 @@ ShowTip(text="no_message")
 DisablePoker:
     Progress, Off
 return
+
+
+ShowTip(text="",posx="",posy="",channel=1)
+{
+    ToolTip %text%, %posx%, %posy%, %channel%
+    return
+}
+
+
+Debug(dtext,item_debug_level=2)
+{
+    global debug_level
+    global debug_text
+
+    FormatTime, TimeString,, yyyy-MM-dd HH:mm
+    if(debug_level >= item_debug_level)
+    {
+        diagnostic_info=%TimeString% %A_ScriptName%
+        FileAppend, %diagnostic_info%: %dtext%`r`n, %A_ScriptDir%\tscdebug.txt
+        DebugText(dtext)
+    }
+    return
+}
+
+
+DebugText(dtext)
+{
+    global debug_text, SHOWTIP_DEBUG
+
+    debug_x := A_ScreenWidth  - 400
+    debug_y := A_ScreenHeight - 75
+
+    if debug_text
+    {
+        debug_text = %debug_text%`n.    %dtext%
+    }
+    else
+    {
+        debug_text = .    %dtext%
+    }
+    debug_y_offset += 12
+    tmp_debug_y := debug_y - debug_y_offset
+    ShowTip(debug_text . "    `n", debug_x, tmp_debug_y, SHOWTIP_DEBUG)
+    SetTimer, DisableDebugTip, 9000
+    return
+}
+
+
+DisableDebugTip:
+{
+    global SHOWTIP_DEBUG
+    debug_text=
+    debug_y_offset = 0
+    SetTimer, DisableDebugTip, Off
+    ClearTip(SHOWTIP_DEBUG)
+    return
+}
+
+
+ClearTip(channel=1)
+{
+    ToolTip,,,,%channel%
+    return
+}
+
 

@@ -1,1 +1,7 @@
 stabby.ini
+*.bak
+*debug*
+ M .gitignore
+ M stabby.ahk
+narrate.ahk
+narration_source.txt
