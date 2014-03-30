@@ -106,7 +106,7 @@ LetterKeys=a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z
 Loop, parse, LetterKeys, `,
 {
     IniRead, WinID, %IniFile%, settings, %A_LoopField%
-    IfWinExist, ahk_id %WinID%
+    if(WinID <> "ERROR")
         KeyMap%A_LoopField% := WinID
 }
 
@@ -137,7 +137,10 @@ DisplayWindow:
             IfWinNotExist, ahk_id %WinID%
             {
                 IniRead, myprocess, %IniFile%, Executables, %A_LoopField%
-                WinID := FindWindow(A_LoopField,myprocess)
+                if(myprocess <> "ERROR")
+                {
+                    WinID := FindWindow(A_LoopField,myprocess)
+                }
             }
             StringUpper, myletter, A_LoopField
             IfWinExist, ahk_id %WinID%
@@ -152,8 +155,11 @@ DisplayWindow:
             else
             {
                 IniRead, myprocess, %IniFile%, Executables, %A_LoopField%
-                myprocess := RegExReplace(myprocess, "\..*", "")
-                Texty=%Texty%[%myletter%]     (%myprocess%)`n
+                if(myprocess <> "ERROR")
+                {
+                    myprocess := RegExReplace(myprocess, "\..*", "")
+                    Texty=%Texty%[%myletter%]     (%myprocess%)`n
+                }
             }
         }
     }
@@ -169,7 +175,7 @@ DisplayWindow:
 )
 
     GuiControl, , TextVar, %Texty%
-    Gosub, GetKey
+    buffer_key := GetKey()
     if buffer_key in %LetterKeys%
     {
         WinID := KeyMap%buffer_key%
@@ -182,15 +188,13 @@ DisplayWindow:
     {
         if buffer_key=%A_Space%
         {
-            ShowMessage("Enter letter to re-use:")
-            Gosub, GetKey
+            buffer_key := GetKey("Enter letter to re-use:")
             if buffer_key in %LetterKeys%
                 set_key(buffer_key,WinExist("A"))
         }
         else if myerrorlevel=EndKey:Delete
         {
-            ShowMessage("Enter letter to delete:")
-            Gosub, GetKey
+            buffer_key := GetKey("Enter letter to delete:")
             if buffer_key in %LetterKeys%
                 kill_key(buffer_key)
         }
@@ -200,13 +204,33 @@ DisplayWindow:
 return
 
 
-GetKey:
+GetKey(prompt="Pick a key:")
+{
+    global
+
+    ShowMessage(prompt)
     Gui, Show, NoActivate Center W400 H420, sTabby! v%VERSION%
-    Input, buffer_key, L1, {LControl}{RControl}{LAlt}{RAlt}{LShift}{RShift}{LWin}{RWin}{AppsKey}{F1}{F2}{F3}{F4}{F5}{F6}{F7}{F8}{F9}{F10}{F11}{F12}{Left}{Right}{Up}{Down}{Home}{End}{PgUp}{PgDn}{Del}{Ins}{BS}{Capslock}{Numlock}{PrintScreen}{Pause}
-    ShowKey(buffer_key)
+    Input, gbuffer_key, L1,{LControl}{RControl}{LAlt}{RAlt}{LShift}{RShift}{LWin}{RWin}{AppsKey}{F1}{F2}{F3}{F4}{F5}{F6}{F7}{F8}{F9}{F10}{F11}{F12}{Left}{Right}{Up}{Down}{Home}{End}{PgUp}{PgDn}{Del}{Ins}{BS}{Capslock}{Numlock}{PrintScreen}{Pause}{Esc}
+
     myerrorlevel=%ErrorLevel%
+    show_key:= gbuffer_key
+    StringUpper, show_key, show_key
+    if show_key = %A_Space%
+    {
+        show_key := "{Space}"
+
+    }
+
+    IfInString, myerrorlevel, EndKey:
+    {
+        StringReplace, show_key, myerrorlevel, EndKey:
+        show_key := "{" . show_key . "}"
+    }
+
+    ShowKey(show_key)
     Gui, Hide
-return
+    return gbuffer_key
+}
 
 
 set_key(in_key,in_winid)
