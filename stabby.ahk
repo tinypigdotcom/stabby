@@ -58,7 +58,7 @@ DONE
 #SingleInstance ignore
 #WinActivateForce
 
-VERSION=0.9.1.2
+VERSION=0.9.1.3
 DEMO=0
 SHOWTIP_DEBUG=3
 
@@ -118,10 +118,19 @@ Gui, Add, Text, W390 H380 vTextVar
 
 Gui +Disabled
 Gui -SysMenu
-Gui, 2:Add, Text, x6 y7 w50 h20 , &Hotkey
-Gui, 2:Add, Hotkey, x66 y7 w90 h20 vChosenHotkey, %TriggerKey%
-Gui, 2:Add, Button, Default x6 y37 w100 h30 , OK
-Gui, 2:Add, Button, x116 y37 w100 h30 , Cancel
+
+
+Gui, 2:Add, Text, x12 y10 w50 h20 , &Hotkey
+Gui, 2:Add, Hotkey, x62 y10 w90 h20 vChosenHotkey, %TriggerKey%
+Gui, 2:Add, CheckBox, x22 y40 w100 h30 , Prompt before assigning key
+Gui, 2:Add, CheckBox, x22 y70 w100 h30 , Also list unassigned windows
+Gui, 2:Add, CheckBox, x22 y100 w100 h30 , CheckBox
+Gui, 2:Add, CheckBox, x22 y130 w100 h30 , CheckBox
+Gui, 2:Add, CheckBox, x22 y160 w100 h30 , CheckBox
+Gui, 2:Add, Button, Default x12 y210 w100 h30 , OK
+Gui, 2:Add, Button, x112 y210 w100 h30 , Cancel
+; Generated using SmartGUI Creator 4.0
+
 return
 
 DisplayWindow:
@@ -320,7 +329,10 @@ return
 
 
 GetOptions:
-    Gui, 2:Show, x131 y91 h82 w227, sTabby - Options
+    Gui, 2:Default
+    GuiControl, , ChosenHotkey, %TriggerKey%
+    GuiControl, Focus, ChosenHotkey
+    Gui, Show, x560 y295 h260 w225, sTabby - Options
 return
 
 
