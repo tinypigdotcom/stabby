@@ -122,11 +122,11 @@ Gui -SysMenu
 
 Gui, 2:Add, Text, x12 y10 w50 h20 , &Hotkey
 Gui, 2:Add, Hotkey, x62 y10 w90 h20 vChosenHotkey, %TriggerKey%
-Gui, 2:Add, CheckBox, x22 y40 w100 h30 , Prompt before assigning key
-Gui, 2:Add, CheckBox, x22 y70 w100 h30 , Also list unassigned windows
-Gui, 2:Add, CheckBox, x22 y100 w100 h30 , CheckBox
-Gui, 2:Add, CheckBox, x22 y130 w100 h30 , CheckBox
-Gui, 2:Add, CheckBox, x22 y160 w100 h30 , CheckBox
+Gui, 2:Add, CheckBox, x22 y40 w200 h30 , Prompt before assigning key
+Gui, 2:Add, CheckBox, x22 y70 w200 h30 , Also list unassigned windows
+Gui, 2:Add, CheckBox, x22 y100 w200 h30 , CheckBox
+Gui, 2:Add, CheckBox, x22 y130 w200 h30 , CheckBox
+Gui, 2:Add, CheckBox, x22 y160 w200 h30 , CheckBox
 Gui, 2:Add, Button, Default x12 y210 w100 h30 , OK
 Gui, 2:Add, Button, x112 y210 w100 h30 , Cancel
 ; Generated using SmartGUI Creator 4.0
