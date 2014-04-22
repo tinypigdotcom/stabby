@@ -24,6 +24,11 @@
 
 TODO
 ----
+ * show all windows not just unassigned
+ * allow disable of alt tab at global level via tray menu via another program
+   like "stab" maybe?
+ * use associative array vs loop
+ * prompt upon find new window
  * Maybe don't overdo it/overthink it
  * documentation
  * Avoid assumptions such as
@@ -58,26 +63,12 @@ DONE
 #SingleInstance ignore
 #WinActivateForce
 
-VERSION=0.9.1.3
+do_macros()
+
+VERSION=0.9.1.5 ; vv
 DEMO=0
-SHOWTIP_DEBUG=3
 
-; How Debug works:
-; ================
-; Default level for debug statements is 2.  Debug statements will only print if
-; Master Debug Level >= statement level.  So, if you create a level 1 debug
-; statement and set Master Debug Level to 1, only that one will print.  Setting
-; Master Debug Level to 2 will trigger a lot of debug output.
-;
-; tscdebug.txt is created in script directory with all debug output
-;
-; Template debug statement:
-;
-; Debug("myvar: " . myvar,1) ;xd
-;
-debug_level=1
-debug_text=
-
+DetectHiddenWindows, Off
 CoordMode, ToolTip, Screen
 
 SplitPath, A_ScriptName,,, TheScriptExtension, TheScriptName
@@ -102,19 +93,22 @@ Hotkey, %TriggerKey%, DisplayWindow
 Hotkey, %TriggerKey%, On
 
 LetterKeys=a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z
+all_letters := { aaa: 1 }
 
 Loop, parse, LetterKeys, `,
 {
+    all_letters[A_LoopField] := 1
     IniRead, WinID, %IniFile%, settings, %A_LoopField%
     if(WinID <> "ERROR")
         KeyMap%A_LoopField% := WinID
 }
+all_letters.Remove("aaa")
 
 Gui, font, s10, Courier New
 Gui +AlwaysOnTop
 MessageText := "Pick a key:"
 Gui, Add, Text, W390 vMessage, %MessageText%
-Gui, Add, Text, W390 H380 vTextVar
+Gui, Add, Text, W390 H680 vTextVar
 
 Gui +Disabled
 Gui -SysMenu
@@ -138,6 +132,8 @@ DisplayWindow:
     ShowMessage(MessageText)
     Texty=
 
+    GoSub, refresh_unassigned
+
     Loop, parse, LetterKeys, `,
     {
         WinID := KeyMap%A_LoopField%
@@ -160,6 +156,12 @@ DisplayWindow:
                 IniWrite, %myprocess%, %IniFile%, Executables, %A_LoopField%
                 myprocess := RegExReplace(myprocess, "\..*", "")
                 Texty=%Texty%[%myletter%]     %myprocess%: %mytitle%`n
+                unassigned_letters.Remove(A_LoopField)
+                unassigned_windows.Remove("X" . WinID) ; can't concat
+;testext=
+;For key, value in unassigned_windows
+;    testext := concat([ testext, ":", key ])
+;debug({ param1: testext, debug_level: 1, linenumber: A_LineNumber })
             }
             else
             {
@@ -168,10 +170,52 @@ DisplayWindow:
                 {
                     myprocess := RegExReplace(myprocess, "\..*", "")
                     Texty=%Texty%[%myletter%]     (%myprocess%)`n
+                    unassigned_letters.Remove(A_LoopField)
                 }
             }
         }
     }
+
+    Texty=
+(
+%Texty%
+Unassigned`:`n`n
+)
+
+array_unassigned_letters := ["aaa"]
+For key, value in unassigned_letters
+    array_unassigned_letters.Insert(key)
+
+array_unassigned_letters.Remove(1)
+hash_letter_win := { aaa:1 }
+
+For key, value in unassigned_windows
+{
+    StringMid, WinID, key, 2
+
+    IfWinExist, ahk_id %WinID%
+    {
+        WinGetTitle, Title, ahk_id %WinID%
+        StringLeft, mytitle, Title, 25
+        WinGet, myprocess, ProcessName
+        myprocess := RegExReplace(myprocess, "\..*", "")
+        next_letter := array_unassigned_letters.Remove(1)
+        if(next_letter)
+        {
+            hash_letter_win[next_letter] := "X" . WinID
+            StringUpper, next_letter, next_letter
+            Texty=%Texty%[%next_letter%]     %myprocess%: %mytitle%`n
+;            set_key(next_letter,WinID)
+        }
+    }
+}
+hash_letter_win.Remove("aaa")
+
+;loop through unassigned windows
+
+;E-CIN &
+;E-DTT an unescaped colon on the line above after "Unassigned" makes the whole
+;thing fail quietly. Why?!?
 
     Texty=
 (
@@ -191,7 +235,16 @@ DisplayWindow:
         if( WinID )
             WinActivate ahk_id %WinID%
         else
-            set_key(buffer_key,WinExist("A"))
+        {
+            if( hash_letter_win[buffer_key] )
+            {
+                WinID := hash_letter_win[buffer_key]
+                StringMid, WinID, WinID, 2
+                WinActivate ahk_id %WinID%
+            }
+            else
+                set_key(buffer_key,WinExist("A"))
+        }
     }
     else
     {
@@ -218,7 +271,7 @@ GetKey(prompt="Pick a key:")
     global
 
     ShowMessage(prompt)
-    Gui, Show, NoActivate Center W400 H420, sTabby! v%VERSION%
+    Gui, Show, NoActivate Center W400 H720, sTabby! v%VERSION%
     Input, gbuffer_key, L1,{LControl}{RControl}{LAlt}{RAlt}{LShift}{RShift}{LWin}{RWin}{AppsKey}{F1}{F2}{F3}{F4}{F5}{F6}{F7}{F8}{F9}{F10}{F11}{F12}{Left}{Right}{Up}{Down}{Home}{End}{PgUp}{PgDn}{Del}{Ins}{BS}{Capslock}{Numlock}{PrintScreen}{Pause}{Esc}
 
     myerrorlevel=%ErrorLevel%
@@ -279,7 +332,6 @@ ShowMessage(mtext)
 FindWindow(in_key,executable)
 {
     global
-    DetectHiddenWindows, Off
 
 ;    WinGet, id, list,,, Program Manager
     WinGet, id, list, ahk_exe %executable%
@@ -357,67 +409,20 @@ DisablePoker:
 return
 
 
-ShowTip(text="",posx="",posy="",channel=1)
-{
-    ToolTip %text%, %posx%, %posy%, %channel%
-    return
-}
+refresh_unassigned:
+    unassigned_letters := { aaa: 1 }
+    Loop, parse, LetterKeys, `,
+        unassigned_letters[A_LoopField] := 1
+    unassigned_letters.Remove("aaa")
 
-
-Debug(dtext,item_debug_level=2)
-{
-    global debug_level
-    global debug_text
-
-    FormatTime, TimeString,, yyyy-MM-dd HH:mm
-    if(debug_level >= item_debug_level)
+    unassigned_windows := { aaa: 1 }
+    WinGet, id, list,,, Program Manager
+    Loop, %id%
     {
-        diagnostic_info=%TimeString% %A_ScriptName%
-        FileAppend, %diagnostic_info%: %dtext%`r`n, %A_ScriptDir%\tscdebug.txt
-        DebugText(dtext)
+        this_id := id%A_Index%
+        save_id := "X" . this_id ; avoid conversion to decimal
+        unassigned_windows[save_id] := 1
     }
-    return
-}
-
-
-DebugText(dtext)
-{
-    global debug_text, SHOWTIP_DEBUG
-
-    debug_x := A_ScreenWidth  - 400
-    debug_y := A_ScreenHeight - 75
-
-    if debug_text
-    {
-        debug_text = %debug_text%`n.    %dtext%
-    }
-    else
-    {
-        debug_text = .    %dtext%
-    }
-    debug_y_offset += 12
-    tmp_debug_y := debug_y - debug_y_offset
-    ShowTip(debug_text . "    `n", debug_x, tmp_debug_y, SHOWTIP_DEBUG)
-    SetTimer, DisableDebugTip, 9000
-    return
-}
-
-
-DisableDebugTip:
-{
-    global SHOWTIP_DEBUG
-    debug_text=
-    debug_y_offset = 0
-    SetTimer, DisableDebugTip, Off
-    ClearTip(SHOWTIP_DEBUG)
-    return
-}
-
-
-ClearTip(channel=1)
-{
-    ToolTip,,,,%channel%
-    return
-}
-
+    unassigned_windows.Remove("aaa")
+return
 
