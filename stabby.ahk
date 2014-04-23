@@ -71,6 +71,9 @@ DEMO=0
 DetectHiddenWindows, Off
 CoordMode, ToolTip, Screen
 
+SysGet, VirtualWidth, 78
+SysGet, VirtualHeight, 79
+
 SplitPath, A_ScriptName,,, TheScriptExtension, TheScriptName
 IniFile = %A_ScriptDir%\%TheScriptName%.ini
 IconFile = %A_ScriptDir%\%TheScriptName%.ico
@@ -108,7 +111,7 @@ Gui, font, s10, Courier New
 Gui +AlwaysOnTop
 MessageText := "Pick a key:"
 Gui, Add, Text, W390 vMessage, %MessageText%
-Gui, Add, Text, W390 H680 vTextVar
+Gui, Add, Text, W390 H580 vTextVar
 
 Gui +Disabled
 Gui -SysMenu
@@ -196,16 +199,28 @@ For key, value in unassigned_windows
     IfWinExist, ahk_id %WinID%
     {
         WinGetTitle, Title, ahk_id %WinID%
+        if(!Title)
+            continue
         StringLeft, mytitle, Title, 25
         WinGet, myprocess, ProcessName
         myprocess := RegExReplace(myprocess, "\..*", "")
+        WinGetPos, uX, uY, uWidth, uHeight
+
+        if( uX < 2 and xY < 2 and uWidth < 2 and uHeight < 2 )
+            continue
+        if( uX > VirtualWidth or uY > VirtualHeight )
+            continue
+
+        WinGetClass, this_class, ahk_id %WinID%
+        if( this_class = "Button" )
+            continue
+
         next_letter := array_unassigned_letters.Remove(1)
         if(next_letter)
         {
             hash_letter_win[next_letter] := "X" . WinID
             StringUpper, next_letter, next_letter
             Texty=%Texty%[%next_letter%]     %myprocess%: %mytitle%`n
-;            set_key(next_letter,WinID)
         }
     }
 }
@@ -271,7 +286,7 @@ GetKey(prompt="Pick a key:")
     global
 
     ShowMessage(prompt)
-    Gui, Show, NoActivate Center W400 H720, sTabby! v%VERSION%
+    Gui, Show, NoActivate Center W400 H620, sTabby! v%VERSION%
     Input, gbuffer_key, L1,{LControl}{RControl}{LAlt}{RAlt}{LShift}{RShift}{LWin}{RWin}{AppsKey}{F1}{F2}{F3}{F4}{F5}{F6}{F7}{F8}{F9}{F10}{F11}{F12}{Left}{Right}{Up}{Down}{Home}{End}{PgUp}{PgDn}{Del}{Ins}{BS}{Capslock}{Numlock}{PrintScreen}{Pause}{Esc}
 
     myerrorlevel=%ErrorLevel%
