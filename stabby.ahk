@@ -144,10 +144,11 @@ DisplayWindow:
         {
             IfWinNotExist, ahk_id %WinID%
             {
+                IniRead, mytitle, %IniFile%, Titles, %A_LoopField%
                 IniRead, myprocess, %IniFile%, Executables, %A_LoopField%
-                if(myprocess <> "ERROR")
+                if(myprocess <> "ERROR" and mytitle <> "ERROR")
                 {
-                    WinID := FindWindow(A_LoopField,myprocess)
+                    WinID := FindWindow(A_LoopField,myprocess,mytitle)
                 }
             }
             StringUpper, myletter, A_LoopField
@@ -157,6 +158,7 @@ DisplayWindow:
                 StringLeft, mytitle, Title, 25
                 WinGet, myprocess, ProcessName
                 IniWrite, %myprocess%, %IniFile%, Executables, %A_LoopField%
+                IniWrite, %Title%, %IniFile%, Titles, %A_LoopField%
                 myprocess := RegExReplace(myprocess, "\..*", "")
                 Texty=%Texty%[%myletter%]     %myprocess%: %mytitle%`n
                 unassigned_letters.Remove(A_LoopField)
@@ -169,12 +171,15 @@ DisplayWindow:
             else
             {
                 IniRead, myprocess, %IniFile%, Executables, %A_LoopField%
-                if(myprocess <> "ERROR")
+                IniRead, mytitle, %IniFile%, Titles, %A_LoopField%
+                if(myprocess <> "ERROR" and mytitle <> "ERROR")
                 {
                     myprocess := RegExReplace(myprocess, "\..*", "")
                     Texty=%Texty%[%myletter%]     (%myprocess%)`n
                     unassigned_letters.Remove(A_LoopField)
                 }
+                else
+                    kill_key(myletter)
             }
         }
     }
@@ -248,9 +253,18 @@ hash_letter_win.Remove("aaa")
     {
         WinID := KeyMap%buffer_key%
         if( WinID )
+        {
+;            debug({ param1: concat([ buffer_key, " has a WinID" ]), debug_level: 1, linenumber: A_LineNumber })
+;            IfWinExist, ahk_id %WinID%
+;            {
+;                debug({ param1: concat([ buffer_key, " has a WinID that exists" ]), debug_level: 1, linenumber: A_LineNumber })
+;            }
+
             WinActivate ahk_id %WinID%
+        }
         else
         {
+;            debug({ param1: concat([ buffer_key, " has no WinID" ]), debug_level: 1, linenumber: A_LineNumber })
             if( hash_letter_win[buffer_key] )
             {
                 WinID := hash_letter_win[buffer_key]
@@ -333,6 +347,7 @@ kill_key(in_key)
     global
     clear_key(in_key)
     IniDelete, %IniFile%, Executables, %in_key%
+    IniDelete, %IniFile%, Titles, %in_key%
     return
 }
 
@@ -344,7 +359,7 @@ ShowMessage(mtext)
 }
 
 
-FindWindow(in_key,executable)
+FindWindow(in_key,executable,title)
 {
     global
 
@@ -358,13 +373,14 @@ FindWindow(in_key,executable)
         {
             WinID := KeyMap%A_LoopField%
             if( WinID = this_id )
-            {
                 continue outer
-            }
         }
         set_key(in_key,this_id)
-        return this_id
+        WinGetTitle, this_title, ahk_id %this_id%
+        if(this_title = title)
+            break outer
     }
+    return this_id
 }
 
 
