@@ -24,18 +24,11 @@
 
 TODO
 ----
- * show all windows not just unassigned
  * allow disable of alt tab at global level via tray menu via another program
    like "stab" maybe?
  * use associative array vs loop
  * prompt upon find new window
- * Maybe don't overdo it/overthink it
  * documentation
- * Avoid assumptions such as
-     * screen size
-     * default font?
- * Possibilities
-     * window is not visible?
  * Allow naming of key - override of window title
  * refactor (ongoing)
  * error checking
@@ -47,6 +40,13 @@ Maybe
 
 DONE
 ----
+ * Possibilities
+     * window is not visible? (detect hidden windows off)
+ * Avoid assumptions such as
+     * screen size
+     * default font?
+ * Maybe don't overdo it/overthink it
+ * show all windows not just unassigned
  * Display what is currently set
  * Possibilities
      * window is closed
@@ -264,7 +264,7 @@ hash_letter_win.Remove("aaa")
         }
         else
         {
-;            debug({ param1: concat([ buffer_key, " has no WinID" ]), debug_level: 1, linenumber: A_LineNumber })
+            ;debug({ param1: concat([ buffer_key, " has no WinID" ]), debug_level: 1, linenumber: A_LineNumber })
             if( hash_letter_win[buffer_key] )
             {
                 WinID := hash_letter_win[buffer_key]
@@ -362,25 +362,67 @@ ShowMessage(mtext)
 FindWindow(in_key,executable,title)
 {
     global
+    DetectHiddenWindows, Off
 
+    ;debug({ param1: concat([ "executable{", executable, "} title{", title,"}" ]), debug_level: 1, linenumber: A_LineNumber })
+
+    first_found_id=
+
+;FAILING because we loop through WINDOW list, not matching keys-executables list
 ;    WinGet, id, list,,, Program Manager
     WinGet, id, list, ahk_exe %executable%
     outer:
     Loop, %id%
     {
         this_id := id%A_Index%
+        WinGetTitle, this_title, ahk_id %this_id%
+        ;debug({ param1: concat([ "--this_title{", this_title, "} title{", title,"}" ]), debug_level: 1, linenumber: A_LineNumber })
         Loop, parse, LetterKeys, `,
         {
             WinID := KeyMap%A_LoopField%
             if( WinID = this_id )
+            {
                 continue outer
+            }
         }
-        set_key(in_key,this_id)
-        WinGetTitle, this_title, ahk_id %this_id%
-        if(this_title = title)
-            break outer
+        ;take the first one that matches the executable AND is not assigned to
+        ;another key
+        ;so... INSTEAD, just save the first one and use that if we don't find
+        ;an exact title match by the end.
+        if(!first_found_id)
+        {
+            first_found_id := this_id
+        }
+        if( same( this_title, title ) )
+        {
+            ;debug({ param1: "title match", debug_level: 1, linenumber: A_LineNumber })
+            set_key(in_key,this_id)
+            return this_id
+        }
     }
-    return this_id
+    if(first_found_id)
+    {
+        ;_({ debug: "first found" })
+        ;debug({ param1: "first found", debug_level: 1, linenumber: A_LineNumber })
+        set_key(in_key,first_found_id)
+        return first_found_id
+    }
+}
+
+same(string1,string2)
+{
+    string1len := StrLen(string1)
+    string2len := StrLen(string2)
+    if(string1len > string2len)
+        string1 := SubStr(string1, 1, string2len)
+    else if(string2len > string1len)
+        string2 := SubStr(string2, 1, string1len)
+    debug({ param1: concat([ "string1{", string1, "}" ]), debug_level: 1, linenumber: A_LineNumber })
+    debug({ param1: concat([ "string2{", string2, "}" ]), debug_level: 1, linenumber: A_LineNumber })
+    if(string1 = string2)
+        return 1
+    else
+        return 0
 }
 
 
