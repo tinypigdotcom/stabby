@@ -65,7 +65,7 @@ DONE
 
 do_macros()
 
-VERSION=0.9.1.5 ; vv
+VERSION=0.9.1.7 ; vv
 DEMO=0
 
 DetectHiddenWindows, Off
@@ -95,17 +95,30 @@ IniRead, TriggerKey, %IniFile%, settings, TriggerKey, CapsLock
 Hotkey, %TriggerKey%, DisplayWindow
 Hotkey, %TriggerKey%, On
 
+valid_winids_a := [ ]
+valid_winids_h := { }
+;executables  := { }
+;titles       := { }
+;letter_wins  := { }
+
+;found a window that isn't mapped to a key
+;make a list of valid windows (visible, not weird)
+;valid_win_ids[ ]
+;win_ids
+;win_ids{win_id} = letter
+
 LetterKeys=a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z
-all_letters := { aaa: 1 }
+all_letters_h := { }
+all_letters_a := [ ]
 
 Loop, parse, LetterKeys, `,
 {
-    all_letters[A_LoopField] := 1
+    all_letters_h[A_LoopField] := 1
+    all_letters_a.Insert(A_LoopField)
     IniRead, WinID, %IniFile%, settings, %A_LoopField%
     if(WinID <> "ERROR")
         KeyMap%A_LoopField% := WinID
 }
-all_letters.Remove("aaa")
 
 Gui, font, s10, Courier New
 Gui +AlwaysOnTop
@@ -115,7 +128,6 @@ Gui, Add, Text, W390 H580 vTextVar
 
 Gui +Disabled
 Gui -SysMenu
-
 
 Gui, 2:Add, Text, x12 y10 w50 h20 , &Hotkey
 Gui, 2:Add, Hotkey, x62 y10 w90 h20 vChosenHotkey, %TriggerKey%
@@ -137,46 +149,35 @@ DisplayWindow:
 
     GoSub, refresh_unassigned
 
-    Loop, parse, LetterKeys, `,
+    for index, loop_letter in all_letters_a
     {
-        WinID := KeyMap%A_LoopField%
+        WinID := KeyMap%loop_letter%
         if( WinID )
         {
             IfWinNotExist, ahk_id %WinID%
-            {
-                IniRead, mytitle, %IniFile%, Titles, %A_LoopField%
-                IniRead, myprocess, %IniFile%, Executables, %A_LoopField%
-                if(myprocess <> "ERROR" and mytitle <> "ERROR")
-                {
-                    WinID := FindWindow(A_LoopField,myprocess,mytitle)
-                }
-            }
-            StringUpper, myletter, A_LoopField
+                WinID := FindWindow(loop_letter)
+            StringUpper, myletter, loop_letter
             IfWinExist, ahk_id %WinID%
             {
                 WinGetTitle, Title, ahk_id %WinID%
                 StringLeft, mytitle, Title, 25
                 WinGet, myprocess, ProcessName
-                IniWrite, %myprocess%, %IniFile%, Executables, %A_LoopField%
-                IniWrite, %Title%, %IniFile%, Titles, %A_LoopField%
+                IniWrite, %myprocess%, %IniFile%, Executables, %loop_letter%
+                IniWrite, %Title%, %IniFile%, Titles, %loop_letter%
                 myprocess := RegExReplace(myprocess, "\..*", "")
                 Texty=%Texty%[%myletter%]     %myprocess%: %mytitle%`n
-                unassigned_letters.Remove(A_LoopField)
+                unassigned_letters.Remove(loop_letter)
                 unassigned_windows.Remove("X" . WinID) ; can't concat
-;testext=
-;For key, value in unassigned_windows
-;    testext := concat([ testext, ":", key ])
-;debug({ param1: testext, debug_level: 1, linenumber: A_LineNumber })
             }
             else
             {
-                IniRead, myprocess, %IniFile%, Executables, %A_LoopField%
-                IniRead, mytitle, %IniFile%, Titles, %A_LoopField%
+                IniRead, myprocess, %IniFile%, Executables, %loop_letter%
+                IniRead, mytitle, %IniFile%, Titles, %loop_letter%
                 if(myprocess <> "ERROR" and mytitle <> "ERROR")
                 {
                     myprocess := RegExReplace(myprocess, "\..*", "")
                     Texty=%Texty%[%myletter%]     (%myprocess%)`n
-                    unassigned_letters.Remove(A_LoopField)
+                    unassigned_letters.Remove(loop_letter)
                 }
                 else
                     kill_key(myletter)
@@ -190,14 +191,13 @@ DisplayWindow:
 Unassigned`:`n`n
 )
 
-array_unassigned_letters := ["aaa"]
+array_unassigned_letters := [ ]
 For key, value in unassigned_letters
     array_unassigned_letters.Insert(key)
 
-array_unassigned_letters.Remove(1)
-hash_letter_win := { aaa:1 }
+hash_letter_win := { }
 
-For key, value in unassigned_windows
+for key, value in unassigned_windows
 {
     StringMid, WinID, key, 2
 
@@ -229,7 +229,6 @@ For key, value in unassigned_windows
         }
     }
 }
-hash_letter_win.Remove("aaa")
 
 ;loop through unassigned windows
 
@@ -254,17 +253,10 @@ hash_letter_win.Remove("aaa")
         WinID := KeyMap%buffer_key%
         if( WinID )
         {
-;            debug({ param1: concat([ buffer_key, " has a WinID" ]), debug_level: 1, linenumber: A_LineNumber })
-;            IfWinExist, ahk_id %WinID%
-;            {
-;                debug({ param1: concat([ buffer_key, " has a WinID that exists" ]), debug_level: 1, linenumber: A_LineNumber })
-;            }
-
             WinActivate ahk_id %WinID%
         }
         else
         {
-            ;debug({ param1: concat([ buffer_key, " has no WinID" ]), debug_level: 1, linenumber: A_LineNumber })
             if( hash_letter_win[buffer_key] )
             {
                 WinID := hash_letter_win[buffer_key]
@@ -359,24 +351,54 @@ ShowMessage(mtext)
 }
 
 
-FindWindow(in_key,executable,title)
+remap_all_windows()
 {
     global
+
+    valid_winids_a := [ ]
+    valid_winids_h := { }
+
+    WinGet, id, list,,, Program Manager
+    Loop, %id%
+    {
+        this_id := id%A_Index%
+        save_id := "X" . this_id ; avoid conversion to decimal
+
+        WinGetTitle, Title, ahk_id %this_id%
+        if(!Title)
+            continue
+
+        WinGetPos, uX, uY, uWidth, uHeight, ahk_id %this_id%
+
+        if( uX < 2 and xY < 2 and uWidth < 2 and uHeight < 2 )
+            continue
+        if( uX > VirtualWidth or uY > VirtualHeight )
+            continue
+
+        valid_winids_a.Insert(save_id)
+        valid_winids_h[save_id] := 1
+    }
+}
+
+
+FindWindow(in_key)
+{
+    global
+
+    IniRead, mytitle, %IniFile%, Titles, %in_key%
+    IniRead, executable, %IniFile%, Executables, %in_key%
+
+    if(myprocess = "ERROR" or mytitle = "ERROR")
+        return
+
     DetectHiddenWindows, Off
 
-    ;debug({ param1: concat([ "executable{", executable, "} title{", title,"}" ]), debug_level: 1, linenumber: A_LineNumber })
-
-    first_found_id=
-
-;FAILING because we loop through WINDOW list, not matching keys-executables list
-;    WinGet, id, list,,, Program Manager
     WinGet, id, list, ahk_exe %executable%
     outer:
     Loop, %id%
     {
         this_id := id%A_Index%
         WinGetTitle, this_title, ahk_id %this_id%
-        ;debug({ param1: concat([ "--this_title{", this_title, "} title{", title,"}" ]), debug_level: 1, linenumber: A_LineNumber })
         Loop, parse, LetterKeys, `,
         {
             WinID := KeyMap%A_LoopField%
@@ -385,29 +407,11 @@ FindWindow(in_key,executable,title)
                 continue outer
             }
         }
-        ;take the first one that matches the executable AND is not assigned to
-        ;another key
-        ;so... INSTEAD, just save the first one and use that if we don't find
-        ;an exact title match by the end.
-        if(!first_found_id)
-        {
-            first_found_id := this_id
-        }
-        if( same( this_title, title ) )
-        {
-            ;debug({ param1: "title match", debug_level: 1, linenumber: A_LineNumber })
-            set_key(in_key,this_id)
-            return this_id
-        }
-    }
-    if(first_found_id)
-    {
-        ;_({ debug: "first found" })
-        ;debug({ param1: "first found", debug_level: 1, linenumber: A_LineNumber })
-        set_key(in_key,first_found_id)
-        return first_found_id
+        set_key(in_key,this_id)
+        return this_id
     }
 }
+
 
 same(string1,string2)
 {
@@ -499,3 +503,7 @@ refresh_unassigned:
     unassigned_windows.Remove("aaa")
 return
 
+;testext=
+;For key, value in unassigned_windows
+;    testext := concat([ testext, ":", key ])
+;debug({ param1: testext, debug_level: 1, linenumber: loop_letter })
