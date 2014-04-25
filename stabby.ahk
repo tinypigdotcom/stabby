@@ -65,7 +65,7 @@ DONE
 
 do_macros()
 
-VERSION=0.9.1.7 ; vv
+VERSION=0.9.1.9 ; vv
 DEMO=0
 
 DetectHiddenWindows, Off
@@ -80,7 +80,7 @@ IconFile = %A_ScriptDir%\%TheScriptName%.ico
 myerrorlevel=
 
 if TheScriptExtension <> Exe
-    menu, tray, icon,%IconFile%
+    menu, tray, icon, %IconFile%
 
 menu, tray, NoStandard
 menu, tray, add, Options, GetOptions
@@ -107,9 +107,10 @@ valid_winids_h := { }
 ;win_ids
 ;win_ids{win_id} = letter
 
-LetterKeys=a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z
+LetterKeys=A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z
 all_letters_h := { }
 all_letters_a := [ ]
+keymap := { }
 
 Loop, parse, LetterKeys, `,
 {
@@ -117,7 +118,7 @@ Loop, parse, LetterKeys, `,
     all_letters_a.Insert(A_LoopField)
     IniRead, WinID, %IniFile%, settings, %A_LoopField%
     if(WinID <> "ERROR")
-        KeyMap%A_LoopField% := WinID
+        keymap[A_LoopField] := WinID
 }
 
 Gui, font, s10, Courier New
@@ -139,6 +140,7 @@ Gui, 2:Add, CheckBox, x22 y160 w200 h30 , CheckBox
 Gui, 2:Add, Button, Default x12 y210 w100 h30 , OK
 Gui, 2:Add, Button, x112 y210 w100 h30 , Cancel
 ; Generated using SmartGUI Creator 4.0
+remap_all_windows()
 
 return
 
@@ -151,23 +153,27 @@ DisplayWindow:
 
     for index, loop_letter in all_letters_a
     {
-        WinID := KeyMap%loop_letter%
+        WinID  := keymap[loop_letter]
+        XWinID := "X" . WinID
         if( WinID )
         {
-            IfWinNotExist, ahk_id %WinID%
+            if(!valid_winids_h[XWinID])
+            {
                 WinID := FindWindow(loop_letter)
-            StringUpper, myletter, loop_letter
-            IfWinExist, ahk_id %WinID%
+                XWinID := "X" . WinID
+            }
+            if(valid_winids_h[XWinID])
             {
                 WinGetTitle, Title, ahk_id %WinID%
                 StringLeft, mytitle, Title, 25
-                WinGet, myprocess, ProcessName
+                WinGet, myprocess, ProcessName, ahk_id %WinID%
+                StringUpper, myprocess, myprocess
                 IniWrite, %myprocess%, %IniFile%, Executables, %loop_letter%
                 IniWrite, %Title%, %IniFile%, Titles, %loop_letter%
                 myprocess := RegExReplace(myprocess, "\..*", "")
-                Texty=%Texty%[%myletter%]     %myprocess%: %mytitle%`n
+                Texty=%Texty%[%loop_letter%]  %myprocess% %mytitle%`n
                 unassigned_letters.Remove(loop_letter)
-                unassigned_windows.Remove("X" . WinID) ; can't concat
+                unassigned_windows.Remove(XWinID) ; can't concat
             }
             else
             {
@@ -176,11 +182,11 @@ DisplayWindow:
                 if(myprocess <> "ERROR" and mytitle <> "ERROR")
                 {
                     myprocess := RegExReplace(myprocess, "\..*", "")
-                    Texty=%Texty%[%myletter%]     (%myprocess%)`n
+                    Texty=%Texty%[%loop_letter%]     (%myprocess%)`n
                     unassigned_letters.Remove(loop_letter)
                 }
                 else
-                    kill_key(myletter)
+                    kill_key(loop_letter)
             }
         }
     }
@@ -199,33 +205,22 @@ hash_letter_win := { }
 
 for key, value in unassigned_windows
 {
+    XWinID := key
     StringMid, WinID, key, 2
 
-    IfWinExist, ahk_id %WinID%
+    if(valid_winids_h[XWinID])
     {
         WinGetTitle, Title, ahk_id %WinID%
-        if(!Title)
-            continue
         StringLeft, mytitle, Title, 25
-        WinGet, myprocess, ProcessName
+        WinGet, myprocess, ProcessName, ahk_id %WinID%
         myprocess := RegExReplace(myprocess, "\..*", "")
-        WinGetPos, uX, uY, uWidth, uHeight
-
-        if( uX < 2 and xY < 2 and uWidth < 2 and uHeight < 2 )
-            continue
-        if( uX > VirtualWidth or uY > VirtualHeight )
-            continue
-
-        WinGetClass, this_class, ahk_id %WinID%
-        if( this_class = "Button" )
-            continue
 
         next_letter := array_unassigned_letters.Remove(1)
         if(next_letter)
         {
-            hash_letter_win[next_letter] := "X" . WinID
-            StringUpper, next_letter, next_letter
-            Texty=%Texty%[%next_letter%]     %myprocess%: %mytitle%`n
+            hash_letter_win[next_letter] := XWinID
+            StringUpper, myprocess, myprocess
+            Texty=%Texty%[%next_letter%]  %myprocess% %mytitle%`n
         }
     }
 }
@@ -248,13 +243,11 @@ for key, value in unassigned_windows
 
     GuiControl, , TextVar, %Texty%
     buffer_key := GetKey()
-    if buffer_key in %LetterKeys%
+    if ( all_letters_h[buffer_key] )
     {
-        WinID := KeyMap%buffer_key%
+        WinID := keymap[buffer_key]
         if( WinID )
-        {
             WinActivate ahk_id %WinID%
-        }
         else
         {
             if( hash_letter_win[buffer_key] )
@@ -319,7 +312,7 @@ GetKey(prompt="Pick a key:")
 set_key(in_key,in_winid)
 {
     global
-    KeyMap%in_key% := in_winid
+    keymap[in_key] := in_winid
     IniWrite, %in_winid%, %IniFile%, Settings, %in_key%
     return
 }
@@ -328,7 +321,7 @@ set_key(in_key,in_winid)
 clear_key(in_key)
 {
     global
-    KeyMap%in_key%=
+    keymap.Remove(in_key)
     IniDelete, %IniFile%, Settings, %in_key%
     return
 }
@@ -351,6 +344,8 @@ ShowMessage(mtext)
 }
 
 
+;1. what is the question?
+;2. don't answer a question that isn't being asked
 remap_all_windows()
 {
     global
@@ -367,6 +362,7 @@ remap_all_windows()
         WinGetTitle, Title, ahk_id %this_id%
         if(!Title)
             continue
+        WinGet, myprocess, ProcessName, ahk_id %this_id%
 
         WinGetPos, uX, uY, uWidth, uHeight, ahk_id %this_id%
 
@@ -375,9 +371,15 @@ remap_all_windows()
         if( uX > VirtualWidth or uY > VirtualHeight )
             continue
 
+        WinGetClass, this_class, ahk_id %this_id%
+        if( this_class = "Button" )
+            continue
+
         valid_winids_a.Insert(save_id)
         valid_winids_h[save_id] := 1
     }
+    ;_({ debug: join(",", valid_winids_a) })
+    debug({ param1: join(",", valid_winids_a), debug_level: 1, linenumber: A_LineNumber })
 }
 
 
@@ -401,7 +403,7 @@ FindWindow(in_key)
         WinGetTitle, this_title, ahk_id %this_id%
         Loop, parse, LetterKeys, `,
         {
-            WinID := KeyMap%A_LoopField%
+            WinID := keymap[A_LoopField]
             if( WinID = this_id )
             {
                 continue outer
