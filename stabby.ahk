@@ -62,7 +62,7 @@ DONE
 
 do_macros()
 
-VERSION=0.9.2.1 ; vv
+VERSION=0.9.2.3 ; vv
 DEMO=0
 
 DetectHiddenWindows, Off
@@ -313,8 +313,6 @@ show_message(mtext)
 }
 
 
-;1. what is the question?
-;2. don't answer a question that isn't being asked
 remap_all_windows()
 {
     global
@@ -328,10 +326,9 @@ remap_all_windows()
         this_id := id%A_Index%
         x_win_id := "X" . this_id ; avoid conversion to decimal
 
-        WinGetTitle, Title, ahk_id %this_id%
-        if(!Title)
+        WinGetTitle, raw_title, ahk_id %this_id%
+        if(!raw_title)
             continue
-        WinGet, _process, ProcessName, ahk_id %this_id%
 
         WinGetPos, uX, uY, uWidth, uHeight, ahk_id %this_id%
 
@@ -344,26 +341,31 @@ remap_all_windows()
         if( this_class = "Button" )
             continue
 
-        WinGetTitle, Title, ahk_id %this_id%
-        StringLeft, _title, Title, 25
-        WinGet, currentprocess, ProcessName, ahk_id %this_id%
-        StringUpper, _process, currentprocess
-        _process := RegExReplace(_process, "\..*", "")
-        _process := SubStr(_process . "         ", 1, 8)
-        pretty_title[x_win_id] := _title
-        pretty_process[x_win_id] := _process
+        WinGetTitle, raw_title, ahk_id %this_id%
+        StringLeft, p_title, raw_title, 25
+        WinGet, raw_process, ProcessName, ahk_id %this_id%
+        StringUpper, p_process, raw_process
+        p_process := RegExReplace(p_process, "\..*", "")
+        p_process := SubStr(p_process . "         ", 1, 8)
+        pretty_title[x_win_id] := p_title
+        pretty_process[x_win_id] := p_process
 
         current_letter := win_id_to_letter[x_win_id]
         if ( current_letter )
         {
-            IniWrite, %currentprocess%, %ini_file%, Executables, %current_letter%
-            IniWrite, %Title%, %ini_file%, Titles, %current_letter%
+            IniWrite, %raw_process%, %ini_file%, Executables, %current_letter%
+            IniWrite, %raw_title%, %ini_file%, Titles, %current_letter%
             unassigned_letters.Remove(current_letter)
             unassigned_windows.Remove(x_win_id)
         }
         valid_winids_a.Insert(x_win_id)
         valid_winids_h[x_win_id] := 1
     }
+    ; active window
+    ;     unassigned
+    ;     x
+    ;     x
+    ;     x
 }
 
 
