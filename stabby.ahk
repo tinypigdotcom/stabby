@@ -62,7 +62,7 @@ DONE
 
 do_macros()
 
-VERSION=0.9.2.3 ; vv
+VERSION=0.9.2.5 ; vv
 DEMO=0
 
 DetectHiddenWindows, Off
@@ -100,9 +100,12 @@ all_letters_h        := { } ; Contain all letters in letter_keys for lookup
 all_letters_a        := [ ] ; Contain all letters in letter_keys for looping
 letter_to_win_id     := { } ; hash mapping assigned letter to WinID
 win_id_to_letter     := { } ; hash mapping WinID to assigned letter
+raw_title            := { } ; hash of titles by WinID
+raw_process          := { } ; hash of executables by WinID
 pretty_title         := { } ; hash of titles by WinID for printing
 pretty_process       := { } ; hash of executables by WinID for printing
 unassigned_to_win_id := { } ; hash mapping unassigned letter to WinID
+assigned_but_no_win  := { } ; hash mapping unassigned letter to WinID
 
 Loop, parse, letter_keys, `,
 {
@@ -150,62 +153,6 @@ display_window:
     GoSub, refresh_unassigned ; TODO this should be included in remap_all_windows
 
     remap_all_windows()
-
-    for index, loop_letter in all_letters_a
-    {
-        win_id   := letter_to_win_id[loop_letter]
-        x_win_id := "X" . win_id
-        if( win_id )
-        {
-            if( valid_winids_h[x_win_id] )
-                output := output . "[" . loop_letter . "] " . pretty_process[x_win_id] . " " . pretty_title[x_win_id] . "`n"
-            else
-            {
-                IniRead, _process, %ini_file%, Executables, %loop_letter%
-                IniRead, _title,   %ini_file%, Titles,      %loop_letter%
-                if(_process <> "ERROR" and _title <> "ERROR")
-                {
-                    _process := RegExReplace(_process, "\..*", "")
-                    output := output . "[" . loop_letter . "] (" . _process . ")`n"
-                    unassigned_letters.Remove(loop_letter)
-                }
-                else
-                    kill_key(loop_letter)
-            }
-        }
-    }
-
-    output := output . "`nUnassigned:`n`n"
-
-    ; TODO this should be included in remap_all_windows
-    array_unassigned_letters := [ ]
-    For key, value in unassigned_letters
-        array_unassigned_letters.Insert(key)
-
-    unassigned_to_win_id := { }
-
-    for key, value in unassigned_windows
-    {
-        x_win_id := key
-        StringMid, win_id, key, 2
-
-        if ( valid_winids_h[x_win_id] )
-        {
-            next_letter := array_unassigned_letters.Remove(1)
-            if( next_letter )
-            {
-                unassigned_to_win_id[next_letter] := x_win_id
-                output := output . "[" . next_letter . "] " . pretty_process[x_win_id] . " " . pretty_title[x_win_id] . "`n"
-            }
-        }
-    }
-
-
-    output := output . "`n"
-           . "[space] reassign letter`n"
-           . "[del]   delete letter`n"
-           . "[esc]   dismiss this window`n"
-           . "[home]  restart sTabby`n"
 
     GuiControl, , text_variable, %output%
     buffer_key := GetKey()
@@ -361,11 +308,81 @@ remap_all_windows()
         valid_winids_a.Insert(x_win_id)
         valid_winids_h[x_win_id] := 1
     }
-    ; active window
-    ;     unassigned
-    ;     x
-    ;     x
-    ;     x
+
+    for index, loop_letter in all_letters_a
+    {
+        win_id   := letter_to_win_id[loop_letter]
+        x_win_id := "X" . win_id
+        if( win_id )
+        {
+            if( valid_winids_h[x_win_id] )
+                output := output . "[" . loop_letter . "] " . pretty_process[x_win_id] . " " . pretty_title[x_win_id] . "`n"
+            else
+            {
+                IniRead, _process, %ini_file%, Executables, %loop_letter%
+                IniRead, _title,   %ini_file%, Titles,      %loop_letter%
+                if(_process <> "ERROR" and _title <> "ERROR")
+                {
+                    _process := RegExReplace(_process, "\..*", "")
+                    output := output . "[" . loop_letter . "] (" . _process . ")`n"
+                    unassigned_letters.Remove(loop_letter)
+                }
+                else
+                    kill_key(loop_letter)
+            }
+        }
+    }
+
+    output := output . "`nUnassigned:`n`n"
+
+    array_unassigned_letters := [ ]
+    For key, value in unassigned_letters
+        array_unassigned_letters.Insert(key)
+
+    unassigned_to_win_id := { }
+
+    for key, value in unassigned_windows
+    {
+        x_win_id := key
+        StringMid, win_id, key, 2
+
+        if ( valid_winids_h[x_win_id] )
+        {
+            next_letter := array_unassigned_letters.Remove(1)
+            if( next_letter )
+            {
+                unassigned_to_win_id[next_letter] := x_win_id
+                output := output . "[" . next_letter . "] " . pretty_process[x_win_id] . " " . pretty_title[x_win_id] . "`n"
+            }
+        }
+    }
+
+    output := output . "`n"
+           . "[space] reassign letter`n"
+           . "[del]   delete letter`n"
+           . "[esc]   dismiss this window`n"
+           . "[home]  restart sTabby`n"
+
+
+    for index, loop_winid in valid_winids_a
+    {
+        x_win_id := loop_winid
+        StringMid, win_id, loop_winid, 2
+
+;        a++
+        if ( !win_id_to_letter[x_win_id] )
+        {
+            ; win is "valid" but not mapped. Search through letters that are
+            ; mapped but don't have a window
+            for index, loop_letter in win_id_to_letter
+            {
+                win_id   := letter_to_win_id[loop_letter]
+                x_win_id := "X" . win_id
+;                b++
+            }
+        }
+    }
+;    say({ param1: concat([ "a", a, " b", b ]), linenumber: A_LineNumber })
 }
 
 
