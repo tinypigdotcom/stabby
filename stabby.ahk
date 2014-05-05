@@ -62,7 +62,7 @@ DONE
 
 do_macros()
 
-VERSION=0.9.2.5 ; vv
+VERSION=0.9.2.9 ; vv
 DEMO=0
 
 DetectHiddenWindows, Off
@@ -100,12 +100,15 @@ all_letters_h        := { } ; Contain all letters in letter_keys for lookup
 all_letters_a        := [ ] ; Contain all letters in letter_keys for looping
 letter_to_win_id     := { } ; hash mapping assigned letter to WinID
 win_id_to_letter     := { } ; hash mapping WinID to assigned letter
-raw_title            := { } ; hash of titles by WinID
-raw_process          := { } ; hash of executables by WinID
+raw_title_h          := { } ; hash of titles by WinID
+raw_process_h        := { } ; hash of executables by WinID
 pretty_title         := { } ; hash of titles by WinID for printing
 pretty_process       := { } ; hash of executables by WinID for printing
 unassigned_to_win_id := { } ; hash mapping unassigned letter to WinID
 assigned_but_no_win  := { } ; hash mapping unassigned letter to WinID
+lost_process         := { } ; lost process
+lost_pretty_process  := { } ; lost pretty process
+lost_title           := { } ; lost title
 
 Loop, parse, letter_keys, `,
 {
@@ -294,7 +297,9 @@ remap_all_windows()
         StringUpper, p_process, raw_process
         p_process := RegExReplace(p_process, "\..*", "")
         p_process := SubStr(p_process . "         ", 1, 8)
-        pretty_title[x_win_id] := p_title
+        raw_title_h[x_win_id]      := raw_title
+        raw_process_h[x_win_id]    := raw_process
+        pretty_title[x_win_id]   := p_title
         pretty_process[x_win_id] := p_process
 
         current_letter := win_id_to_letter[x_win_id]
@@ -309,26 +314,87 @@ remap_all_windows()
         valid_winids_h[x_win_id] := 1
     }
 
+    for loop_letter, win_id in letter_to_win_id
+    {
+        x_win_id := "X" . win_id
+        if( !valid_winids_h[x_win_id] )
+        {
+            IniRead, _process, %ini_file%, Executables, %loop_letter%
+            IniRead, _title,   %ini_file%, Titles,      %loop_letter%
+            if(_process <> "ERROR" and _title <> "ERROR")
+            {
+                lost_process[loop_letter] := _process
+                _process := RegExReplace(_process, "\..*", "")
+                lost_pretty_process[loop_letter] := _process
+                lost_title[loop_letter]   := _title
+                unassigned_letters.Remove(loop_letter)
+            }
+            else
+                kill_key(loop_letter)
+        }
+    }
+
+    ; 1. I have a list of windows that aren't assigned to keys
+    ;     a. I start with the first window
+    ;         1. I get its raw process and raw title
+    ;         2. I look through all the letters that are mapped
+    ;               a. If I find an exact match on process AND title, I
+    ;                  immediately assign that window to that letter
+    ;               b. otherwise I settle on the first process match OR
+    ;               c. if no match, no mapping. Get next unassigned window
+
+    outer:
+    for index, loop_winid in valid_winids_a
+    {
+        x_win_id := loop_winid
+        StringMid, win_id, loop_winid, 2
+
+        if ( !win_id_to_letter[x_win_id] )
+        {
+            current_title   := raw_title_h[x_win_id]
+            current_process := raw_process_h[x_win_id]
+            save_letter=
+            ; win is "valid" but not mapped. Search through letters that are
+            ; mapped but don't have a window
+            for loop_letter, proc in lost_process
+            {
+                if ( current_process = proc )
+                {
+                    save_letter := loop_letter
+                    if ( same( current_title, lost_title[loop_letter] ) )
+                    {
+                        win_id_to_letter[x_win_id]    := loop_letter
+                        letter_to_win_id[loop_letter] := win_id
+                        lost_process.Remove(loop_letter)
+                        lost_title.Remove(loop_letter)
+                        continue outer
+                    }
+                }
+            }
+            if ( save_letter )
+            {
+                win_id_to_letter[x_win_id]    := save_letter
+                letter_to_win_id[save_letter] := win_id
+                lost_process.Remove(save_letter)
+                lost_title.Remove(save_letter)
+            }
+        }
+    }
+;    say({ param1: concat([ "a", a, " b", b ]), linenumber: A_LineNumber })
+
     for index, loop_letter in all_letters_a
     {
         win_id   := letter_to_win_id[loop_letter]
-        x_win_id := "X" . win_id
         if( win_id )
         {
+            x_win_id := "X" . win_id
             if( valid_winids_h[x_win_id] )
+            {
                 output := output . "[" . loop_letter . "] " . pretty_process[x_win_id] . " " . pretty_title[x_win_id] . "`n"
+            }
             else
             {
-                IniRead, _process, %ini_file%, Executables, %loop_letter%
-                IniRead, _title,   %ini_file%, Titles,      %loop_letter%
-                if(_process <> "ERROR" and _title <> "ERROR")
-                {
-                    _process := RegExReplace(_process, "\..*", "")
-                    output := output . "[" . loop_letter . "] (" . _process . ")`n"
-                    unassigned_letters.Remove(loop_letter)
-                }
-                else
-                    kill_key(loop_letter)
+                output := output . "[" . loop_letter . "] (" . lost_pretty_process[loop_letter] . ")`n"
             }
         }
     }
@@ -336,7 +402,7 @@ remap_all_windows()
     output := output . "`nUnassigned:`n`n"
 
     array_unassigned_letters := [ ]
-    For key, value in unassigned_letters
+    for key, value in unassigned_letters
         array_unassigned_letters.Insert(key)
 
     unassigned_to_win_id := { }
@@ -363,26 +429,6 @@ remap_all_windows()
            . "[esc]   dismiss this window`n"
            . "[home]  restart sTabby`n"
 
-
-    for index, loop_winid in valid_winids_a
-    {
-        x_win_id := loop_winid
-        StringMid, win_id, loop_winid, 2
-
-;        a++
-        if ( !win_id_to_letter[x_win_id] )
-        {
-            ; win is "valid" but not mapped. Search through letters that are
-            ; mapped but don't have a window
-            for index, loop_letter in win_id_to_letter
-            {
-                win_id   := letter_to_win_id[loop_letter]
-                x_win_id := "X" . win_id
-;                b++
-            }
-        }
-    }
-;    say({ param1: concat([ "a", a, " b", b ]), linenumber: A_LineNumber })
 }
 
 
@@ -394,8 +440,6 @@ same(string1,string2)
         string1 := SubStr(string1, 1, string2len)
     else if(string2len > string1len)
         string2 := SubStr(string2, 1, string1len)
-;    debug({ param1: concat([ "string1{", string1, "}" ]), debug_level: 1, linenumber: A_LineNumber })
-;    debug({ param1: concat([ "string2{", string2, "}" ]), debug_level: 1, linenumber: A_LineNumber })
     if(string1 = string2)
         return 1
     else
@@ -475,7 +519,7 @@ refresh_unassigned:
 return
 
 ;testext=
-;For key, value in unassigned_windows
+;for key, value in unassigned_windows
 ;    testext := concat([ testext, ":", key ])
 ;debug({ param1: testext, debug_level: 1, linenumber: loop_letter })
 
